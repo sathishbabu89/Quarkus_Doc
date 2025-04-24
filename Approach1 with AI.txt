@@ -1,0 +1,364 @@
+
+### ✅ Modified Code with the New Tab
+
+Here's how you can extend your current codebase:
+
+```python
+import streamlit as st
+import requests
+import pandas as pd
+from datetime import datetime
+from huggingface_hub import InferenceClient  # Make sure huggingface_hub is installed
+
+# Configuration
+QUARKUS_API = st.secrets.get("QUARKUS_API", "http://localhost:8080")
+HUGGINGFACE_API_TOKEN = st.secrets.get("HUGGINGFACE_API_TOKEN", "")  # Add your token in .streamlit/secrets.toml
+CACHE_TTL = 3600  # 1 hour cache
+
+st.title("Financial Dashboard")
+
+@st.cache_data(ttl=CACHE_TTL)
+def fetch_data(url):
+    try:
+        response = requests.get(url, timeout=10)
+        response.raise_for_status()
+        return response.json()
+    except requests.exceptions.RequestException as e:
+        st.error(f"Error fetching data: {e}")
+        return None
+    except ValueError as e:
+        st.error(f"Error decoding JSON: {e}")
+        return None
+
+# Fetch financial data
+with st.spinner("Loading financial data..."):
+    spending = fetch_data(f"{QUARKUS_API}/analysis/spending-by-category")
+    total_summary = fetch_data(f"{QUARKUS_API}/analysis/total-summary")
+
+# Display tabs
+tab1, tab2, tab3 = st.tabs(["💰 Overview", "📈 Spending Chart", "🤖 AI-Powered Insights"])
+
+# ---------------- Tab 1: Overview ----------------
+with tab1:
+    if total_summary:
+        try:
+            col1, col2, col3 = st.columns(3)
+            col1.metric("Total Income", f"€{total_summary.get('totalIncome', 0):,.2f}")
+            col2.metric("Total Expenses", f"€{total_summary.get('totalExpenses', 0):,.2f}")
+            col3.metric("Savings", f"€{total_summary.get('savings', 0):,.2f}")
+        except Exception as e:
+            st.error(f"Error displaying metrics: {e}")
+
+# ---------------- Tab 2: Spending ----------------
+with tab2:
+    if spending:
+        try:
+            st.subheader("Spending by Category")
+            spending_df = pd.DataFrame.from_dict(spending, orient='index', columns=['Amount'])
+            st.bar_chart(spending_df)
+        except Exception as e:
+            st.error(f"Error displaying spending chart: {e}")
+
+# ---------------- Tab 3: AI Insights ----------------
+def generate_savings_recommendation(total_summary, spending):
+    total_income = total_summary.get('totalIncome', 0)
+    total_expenses = total_summary.get('totalExpenses', 0)
+    savings = total_summary.get('savings', 0)
+
+    top_spending = sorted(spending.items(), key=lambda x: x[1], reverse=True)[:3]
+    top_categories = [f"{k} (€{v:,.2f})" for k, v in top_spending]
+
+    prompt = f"""
+    [INST] You are a financial advisor AI. Based on the following:
+    - Total Income: €{total_income:,.2f}
+    - Total Expenses: €{total_expenses:,.2f}
+    - Savings: €{savings:,.2f}
+    - Top Spending Categories: {', '.join(top_categories)}
+
+    Provide 3 personalized savings recommendations. Focus on achievable, practical advice and maintain a professional tone. [/INST]
+    """
+
+    client = InferenceClient(
+        model="mistralai/Mistral-7B-Instruct-v0.3",
+        token=HUGGINGFACE_API_TOKEN
+    )
+    response = client.text_generation(prompt, max_new_tokens=300, temperature=0.5)
+    return response.strip()
+
+with tab3:
+    st.subheader("🤖 Personalized Savings Insights")
+    st.markdown("""
+    <div style="background-color: #e8f6f3; padding: 10px; border-radius: 5px; margin-bottom: 20px;">
+        <b>AI-generated recommendations</b> using Mistral-7B to help optimize your savings.
+    </div>
+    """, unsafe_allow_html=True)
+
+    if st.button("Generate Savings Tips", type="primary"):
+        if total_summary and spending:
+            with st.spinner("Generating personalized advice..."):
+                try:
+                    insights = generate_savings_recommendation(total_summary, spending)
+                    st.markdown(f"""
+                    <div style="background-color: #f4f6f6; padding: 20px; border-radius: 10px;">
+                        {insights.replace("\n", "<br>")}
+                    </div>
+                    """, unsafe_allow_html=True)
+                except Exception as e:
+                    st.error(f"Failed to generate insights: {e}")
+        else:
+            st.warning("Missing data for insights. Please refresh the dashboard.")
+
+# Sidebar
+st.sidebar.title("Options")
+if st.sidebar.button("Refresh Data"):
+    st.cache_data.clear()
+    st.experimental_rerun()
+
+st.sidebar.markdown("### About")
+st.sidebar.info("""
+This dashboard provides an overview of your financial status, 
+including income, expenses, and savings. The AI tab offers 
+tailored insights to improve your savings strategy.
+""")
+st.sidebar.markdown(f"*Last updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}*")
+```
+
+---
+
+### ✅ To Make This Work:
+1. Add `HUGGINGFACE_API_TOKEN` in your `.streamlit/secrets.toml`:
+   ```toml
+   HUGGINGFACE_API_TOKEN = "your_huggingface_token_here"
+   ```
+
+2. Install dependencies (if not done yet):
+   ```bash
+   pip install huggingface_hub
+   ```
+
+---
+Let's upgrade your **AI-Powered Insights** tab to:
+
+1. 💡 **Generate Personalized Savings Recommendations**
+2. 📄 **Allow PDF Download of Insights**
+3. 🌍 **Support Multiple Languages** (English, Spanish, French, German — customizable)
+
+---
+
+### ✅ Updated Additions Breakdown
+
+#### ✅ 1. PDF Generation Function
+We’ll use `fpdf` to convert the LLM-generated insights into a downloadable PDF.
+
+#### ✅ 2. Multi-language Support
+Add a dropdown to let users choose their preferred language for the insights.
+
+---
+
+### 🔧 Requirements
+Install these packages (if not already installed):
+
+```bash
+pip install fpdf huggingface_hub
+```
+
+Add this to your `.streamlit/secrets.toml`:
+
+```toml
+HUGGINGFACE_API_TOKEN = "your_huggingface_api_token_here"
+```
+
+---
+
+### ✅ Integrated Code for AI-Powered Insights Tab
+
+Here’s the fully updated version of your **AI-Powered Insights** tab:
+
+```python
+from huggingface_hub import InferenceClient
+from fpdf import FPDF
+import tempfile
+
+# Generate savings recommendations in selected language
+def generate_savings_recommendation(total_summary, spending, language="English"):
+    total_income = total_summary.get('totalIncome', 0)
+    total_expenses = total_summary.get('totalExpenses', 0)
+    savings = total_summary.get('savings', 0)
+
+    top_spending = sorted(spending.items(), key=lambda x: x[1], reverse=True)[:3]
+    top_categories = [f"{k} (€{v:,.2f})" for k, v in top_spending]
+
+    prompt = f"""
+    [INST] You are a financial advisor AI providing advice in {language}. Based on the following:
+    - Total Income: €{total_income:,.2f}
+    - Total Expenses: €{total_expenses:,.2f}
+    - Savings: €{savings:,.2f}
+    - Top Spending Categories: {', '.join(top_categories)}
+
+    Provide 3 personalized savings recommendations in {language}. Keep it professional and user-friendly. [/INST]
+    """
+
+    client = InferenceClient(
+        model="mistralai/Mistral-7B-Instruct-v0.3",
+        token=HUGGINGFACE_API_TOKEN
+    )
+    response = client.text_generation(prompt, max_new_tokens=300, temperature=0.5)
+    return response.strip()
+
+# PDF generation
+def generate_pdf_report(content: str, language: str):
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", size=12)
+    pdf.set_title("AI Savings Recommendations")
+
+    pdf.multi_cell(0, 10, f"AI-Powered Savings Insights ({language})\n\n{content}")
+    
+    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
+    pdf.output(temp_file.name)
+    return temp_file.name
+
+# ---------- Inside tab3 for AI Insights ----------
+with tab3:
+    st.subheader("🤖 Personalized Savings Insights")
+    st.markdown("""
+    <div style="background-color: #e8f6f3; padding: 10px; border-radius: 5px; margin-bottom: 20px;">
+        <b>AI-generated recommendations</b> using Mistral-7B to help optimize your savings.
+    </div>
+    """, unsafe_allow_html=True)
+
+    language = st.selectbox("🌍 Select Language", ["English", "Spanish", "French", "German"])
+
+    if st.button("Generate Savings Tips", type="primary"):
+        if total_summary and spending:
+            with st.spinner(f"Generating insights in {language}..."):
+                try:
+                    insights = generate_savings_recommendation(total_summary, spending, language)
+                    
+                    # Show insights
+                    st.markdown(f"""
+                    <div style="background-color: #f4f6f6; padding: 20px; border-radius: 10px;">
+                        {insights.replace("\n", "<br>")}
+                    </div>
+                    """, unsafe_allow_html=True)
+
+                    # Generate and allow download
+                    pdf_path = generate_pdf_report(insights, language)
+                    with open(pdf_path, "rb") as f:
+                        pdf_data = f.read()
+
+                    st.download_button(
+                        label="📄 Download Recommendations as PDF",
+                        data=pdf_data,
+                        file_name=f"savings_insights_{language.lower()}.pdf",
+                        mime="application/pdf"
+                    )
+                except Exception as e:
+                    st.error(f"Failed to generate insights: {e}")
+        else:
+            st.warning("Missing data for insights. Please refresh the dashboard.")
+```
+
+---
+
+### 🔄 Recap of What’s New
+
+✅ AI Insights in multiple languages  
+✅ Savings advice is based on actual financial data  
+✅ One-click PDF download with professional formatting  
+
+---
+
+We'll use **gTTS (Google Text-to-Speech)** to:
+- Convert the insights into an audio file
+- Embed a Streamlit audio player to play it
+
+---
+
+### ⚙️ Install Required Package:
+
+Make sure you have `gtts` installed:
+
+```bash
+pip install gtts
+```
+
+---
+
+### ✅ Add TTS Functionality
+
+Insert this function in your script:
+
+```python
+from gtts import gTTS
+import tempfile
+
+# Convert insights to speech and return audio file path
+def generate_audio_from_text(text: str, language_code="en"):
+    tts = gTTS(text=text, lang=language_code)
+    temp_audio = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
+    tts.save(temp_audio.name)
+    return temp_audio.name
+
+# Language code mapping for gTTS
+LANGUAGE_CODE_MAP = {
+    "English": "en",
+    "Spanish": "es",
+    "French": "fr",
+    "German": "de"
+}
+```
+
+---
+
+### 🔄 Update the AI Insights Tab Logic
+
+Inside your `tab3`, extend it like this:
+
+```python
+if st.button("Generate Savings Tips", type="primary"):
+    if total_summary and spending:
+        with st.spinner(f"Generating insights in {language}..."):
+            try:
+                insights = generate_savings_recommendation(total_summary, spending, language)
+
+                # Display insights
+                st.markdown(f"""
+                <div style="background-color: #f4f6f6; padding: 20px; border-radius: 10px;">
+                    {insights.replace("\n", "<br>")}
+                </div>
+                """, unsafe_allow_html=True)
+
+                # Generate PDF
+                pdf_path = generate_pdf_report(insights, language)
+                with open(pdf_path, "rb") as f:
+                    st.download_button(
+                        label="📄 Download Recommendations as PDF",
+                        data=f.read(),
+                        file_name=f"savings_insights_{language.lower()}.pdf",
+                        mime="application/pdf"
+                    )
+
+                # Generate Audio
+                audio_path = generate_audio_from_text(insights, LANGUAGE_CODE_MAP.get(language, "en"))
+                with open(audio_path, "rb") as audio_file:
+                    st.audio(audio_file.read(), format="audio/mp3")
+
+            except Exception as e:
+                st.error(f"Failed to generate insights: {e}")
+    else:
+        st.warning("Missing data for insights. Please refresh the dashboard.")
+```
+
+---
+
+### ✅ Final Result
+
+You now have a slick **AI insights tab** with:
+- 🌐 Multi-language support
+- 📄 Downloadable PDF
+- 🔊 Voice readout in user's selected language
+
+---
+
+
