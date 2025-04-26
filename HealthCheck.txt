@@ -1,3 +1,202 @@
+
+with tab9:
+    st.header("❤️ Financial Health Check")
+    
+    if total_summary:
+        # Safely calculate key ratios with defaults
+        total_income = total_summary.get('totalIncome', 1)  # Avoid division by zero
+        savings = total_summary.get('savings', 0)
+        total_expenses = total_summary.get('totalExpenses', 0)
+        
+        savings_rate = (savings / total_income) * 100 if total_income else 0
+        expense_ratio = (total_expenses / total_income) * 100 if total_income else 0
+        monthly_expenses = total_expenses
+        
+        # Health metrics with improved styling
+        st.markdown("### Your Financial Vital Signs")
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            metric_color = "green" if savings_rate > 20 else "orange"
+            st.markdown(f"""
+            <div style="background-color: rgba(0,0,0,0.05); padding: 15px; border-radius: 10px; text-align: center;">
+                <h4>Savings Rate</h4>
+                <h2 style="color: {metric_color};">{savings_rate:.1f}%</h2>
+                <p>{"Great work! 🌟" if savings_rate > 20 else "Let's improve this 💪"}</p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+        with col2:
+            metric_color = "green" if expense_ratio < 80 else "orange"
+            st.markdown(f"""
+            <div style="background-color: rgba(0,0,0,0.05); padding: 15px; border-radius: 10px; text-align: center;">
+                <h4>Expense Ratio</h4>
+                <h2 style="color: {metric_color};">{expense_ratio:.1f}%</h2>
+                <p>{"Healthy balance 👍" if expense_ratio < 80 else "Slightly high 👀"}</p>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        # Emergency fund check
+        with col3:
+            emergency_fund = st.number_input("Emergency Fund Amount", 
+                                          value=3*monthly_expenses,
+                                          key="emergency_fund")
+            ef_months = emergency_fund/monthly_expenses if monthly_expenses else 0
+            metric_color = "green" if ef_months >= 6 else "orange" if ef_months >= 3 else "red"
+            st.markdown(f"""
+            <div style="background-color: rgba(0,0,0,0.05); padding: 15px; border-radius: 10px; text-align: center;">
+                <h4>Emergency Fund</h4>
+                <h2 style="color: {metric_color};">{ef_months:.1f} months</h2>
+                <p>{"Excellent safety net! 🛡️" if ef_months >= 6 else "Building nicely 🏗️" if ef_months >= 3 else "Let's strengthen this 🧱"}</p>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        # Debt-to-income ratio
+        if st.session_state.get('debts'):
+            total_debt_payments = sum(d.get('payment', 0) for d in st.session_state.debts)
+            dti_ratio = (total_debt_payments / total_income) * 100 if total_income else 0
+            metric_color = "green" if dti_ratio < 35 else "orange" if dti_ratio < 45 else "red"
+            
+            st.markdown(f"""
+            <div style="background-color: rgba(0,0,0,0.05); padding: 15px; border-radius: 10px; margin: 15px 0;">
+                <h4 style="text-align: center;">Debt-to-Income Ratio</h4>
+                <h2 style="color: {metric_color}; text-align: center;">{dti_ratio:.1f}%</h2>
+                <p style="text-align: center;">{"Manageable debt level 👏" if dti_ratio < 35 else "Let's work on reducing this 📉"}</p>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        # Financial health score
+        health_score = min(100, savings_rate*2 + (100-expense_ratio))
+        if st.session_state.get('debts'):
+            health_score -= min(30, dti_ratio)
+        
+        st.markdown("### Your Financial Health Score")
+        score_color = "green" if health_score >= 80 else "orange" if health_score >= 60 else "red"
+        st.markdown(f"""
+        <div style="margin: 20px 0;">
+            <div style="background-color: #f0f0f0; border-radius: 10px; height: 30px; width: 100%;">
+                <div style="background-color: {score_color}; width: {int(health_score)}%; height: 100%; border-radius: 10px; 
+                      text-align: center; line-height: 30px; color: white; font-weight: bold;">
+                    {int(health_score)}/100
+                </div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Interactive Action Buttons Section
+        st.markdown("### Enhance Your Financial Experience")
+        
+        # Initialize session state for button toggles
+        for key in ['show_personalization', 'show_notifications', 'show_budgeting', 'show_visualizations']:
+            if key not in st.session_state:
+                st.session_state[key] = False
+                
+        # Create action buttons in columns
+        cols = st.columns(4)
+        button_config = [
+            ("🌟 Personalization", "show_personalization"),
+            ("🔔 Notifications", "show_notifications"),
+            ("📊 Budgeting Tools", "show_budgeting"),
+            ("📈 Visualizations", "show_visualizations")
+        ]
+        
+        for (label, state_key), col in zip(button_config, cols):
+            with col:
+                if st.button(label, use_container_width=True):
+                    # Toggle the clicked button and hide others
+                    st.session_state[state_key] = not st.session_state[state_key]
+                    for other_key in [k for k in st.session_state.keys() if k.startswith('show_') and k != state_key]:
+                        st.session_state[other_key] = False
+        
+        # Dynamic content sections
+        if st.session_state.show_personalization:
+            with st.expander("🌟 Personalized Recommendations", expanded=True):
+                savings_advice = ("Consider increasing your savings by reducing discretionary spending" 
+                                if savings_rate < 20 else "Great job with your savings! Let's optimize further")
+                
+                st.markdown(f"""
+                <div style="background-color: rgba(0,0,0,0.05); padding: 20px; border-radius: 10px; margin: 10px 0;">
+                    <h4>For Your {savings_rate:.1f}% Savings Rate:</h4>
+                    <p>{savings_advice}</p>
+                    <ul>
+                        <li>Potential savings: €{(total_income * 0.02):.2f}/month by optimizing 2 categories</li>
+                        <li>Suggested product: High-yield savings account (3.5% APY)</li>
+                    </ul>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                st.button("Get Custom Savings Plan", key="custom_savings")
+                st.button("See Product Recommendations", key="product_recs")
+        
+        if st.session_state.show_notifications:
+            with st.expander("🔔 Notification Settings", expanded=True):
+                avg_transaction = monthly_expenses / 30 if monthly_expenses else 0
+                st.markdown(f"""
+                <div style="background-color: rgba(0,0,0,0.05); padding: 20px; border-radius: 10px; margin: 10px 0;">
+                    <h4>Configure Alerts for Your Spending Patterns</h4>
+                    <p>Average transaction: €{avg_transaction:.2f}</p>
+                    <div style="margin: 15px 0;">
+                        <label>Large Transaction Alert Threshold:</label>
+                        <input type="range" min="{avg_transaction:.0f}" max="{avg_transaction*3:.0f}" value="{avg_transaction*1.5:.0f}" class="slider">
+                        <p>Will alert for transactions above: €{avg_transaction*1.5:.2f}</p>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                st.toggle("Enable Spending Alerts", value=True)
+                st.toggle("Enable Budget Limit Notifications", value=True)
+                st.toggle("Enable Subscription Reminders", value=True)
+        
+        if st.session_state.show_budgeting:
+            with st.expander("📊 Budgeting Tools", expanded=True):
+                suggested_budget = {
+                    'Needs': monthly_expenses * 0.5,
+                    'Savings': total_income * 0.2,
+                    'Wants': monthly_expenses * 0.3
+                }
+                
+                st.markdown(f"""
+                <div style="background-color: rgba(0,0,0,0.05); padding: 20px; border-radius: 10px; margin: 10px 0;">
+                    <h4>Recommended 50/20/30 Budget</h4>
+                    <ul>
+                        <li>Needs (50%): €{suggested_budget['Needs']:.2f}</li>
+                        <li>Savings (20%): €{suggested_budget['Savings']:.2f}</li>
+                        <li>Wants (30%): €{suggested_budget['Wants']:.2f}</li>
+                    </ul>
+                    <p>Your current savings gap: €{(suggested_budget['Savings'] - savings):.2f}/month</p>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                st.slider("Adjust Needs Percentage", 30, 70, 50)
+                st.button("Create Custom Budget Plan", key="custom_budget")
+        
+        if st.session_state.show_visualizations:
+            with st.expander("📈 Spending Visualizations", expanded=True):
+                # Safely get spending categories with default
+                spending_data = total_summary.get('spending_by_category', {})
+                
+                if spending_data:
+                    top_categories = sorted(spending_data.items(), key=lambda x: -x[1])[:3]
+                    
+                    st.markdown(f"""
+                    <div style="background-color: rgba(0,0,0,0.05); padding: 20px; border-radius: 10px; margin: 10px 0;">
+                        <h4>Your Top Spending Categories</h4>
+                        <ul>
+                            <li>{top_categories[0][0]}: €{top_categories[0][1]:.2f}</li>
+                            <li>{top_categories[1][0]}: €{top_categories[1][1]:.2f}</li>
+                            <li>{top_categories[2][0]}: €{top_categories[2][1]:.2f}</li>
+                        </ul>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    viz_option = st.radio("View As:", ["Pie Chart", "Bar Graph", "Trend Line"])
+                    st.button("Generate Visualization", key="generate_viz")
+                else:
+                    st.warning("No spending category data available")
+    
+    else:
+        st.warning("Please load financial data in the Overview tab first")
+=================================================================================================================================
 with tab9:
     st.header("❤️ Financial Health Check")
     
