@@ -1,3 +1,5 @@
+PqRQWBFCMeRUvqdLkcoBsgLdjXDNoVlZXQ
+
 def generate_savings_recommendations(financial_data):
     """Generate personalized and stylish savings recommendations using HuggingFace LLM"""
     client = InferenceClient(token=HUGGINGFACE_API_TOKEN)
