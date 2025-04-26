@@ -1,3 +1,68 @@
+def generate_savings_recommendations(financial_data):
+    """Generate personalized and stylish savings recommendations using HuggingFace LLM"""
+    client = InferenceClient(token=HUGGINGFACE_API_TOKEN)
+    
+    prompt = f"""
+    [INST] As a financial advisor, analyze this financial data and provide personalized savings recommendations:
+    
+    - Monthly Income: €{financial_data.get('totalIncome', 0):,.2f}
+    - Monthly Expenses: €{financial_data.get('totalExpenses', 0):,.2f}
+    - Current Savings: €{financial_data.get('savings', 0):,.2f}
+    - Spending by Category: {financial_data.get('spending_by_category', {})}
+    
+    Provide:
+    1. Three specific savings opportunities based on spending patterns, with each opportunity highlighted with a meaningful emoji
+    2. Recommended savings goals based on income level, presented with percentage targets
+    3. Actionable steps to achieve these goals, presented as a mini-roadmap
+    4. Potential long-term benefits of these savings, emphasized with compelling statistics or projections
+    
+    Format your response with clear headers, bullet points, and emphasize key numbers. Use professional but friendly language with occasional motivational phrases. [/INST]
+    """
+    
+    response = client.text_generation(
+        prompt,
+        model="mistralai/Mistral-7B-Instruct-v0.3",
+        max_new_tokens=512,
+        temperature=0.7
+    )
+    
+    # Format the response with markdown styling
+    formatted_response = format_recommendations(response)
+    
+    return formatted_response
+
+def format_recommendations(raw_response):
+    """Add styling and formatting to the raw LLM response"""
+    # Extract the response content
+    response_text = raw_response
+    
+    # Format the headers with color and style
+    response_text = re.sub(r'## (.*)', r'<h2 style="color: #3498db; border-bottom: 2px solid #3498db; padding-bottom: 5px;">\1</h2>', response_text)
+    response_text = re.sub(r'# (.*)', r'<h1 style="color: #2c3e50; text-align: center; margin-bottom: 20px;">\1</h1>', response_text)
+    
+    # Make important numbers stand out
+    response_text = re.sub(r'€(\d+[\d,\.]*)', r'<span style="color: #27ae60; font-weight: bold;">€\1</span>', response_text)
+    response_text = re.sub(r'(\d+)%', r'<span style="color: #8e44ad; font-weight: bold;">\1%</span>', response_text)
+    
+    # Style bullet points
+    response_text = re.sub(r'- (.*)', r'<li style="margin-bottom: 8px;">\1</li>', response_text)
+    response_text = re.sub(r'<li', r'<ul style="list-style-type: none; padding-left: 20px;"><li style="position: relative;"><span style="position: absolute; left: -20px; color: #e67e22;">→</span>', response_text)
+    response_text = re.sub(r'</li>', r'</li></ul>', response_text)
+    
+    # Add highlight boxes for important sections
+    response_text = re.sub(r'(Actionable Steps to Achieve Your Goals|Recommended Savings Goals|Potential Long-Term Benefits)', 
+                          r'<div style="background-color: #f8f9fa; border-left: 4px solid #3498db; padding: 15px; margin: 20px 0;"><h3 style="margin-top: 0; color: #3498db;">\1</h3>', 
+                          response_text)
+    response_text = re.sub(r'(\n\n## |$)', r'</div>\1', response_text)
+    
+    # Ensure it's marked as HTML content
+    styled_response = f"""<div style="font-family: Arial, sans-serif; line-height: 1.6; padding: 20px;">
+    {response_text}
+    </div>"""
+    
+    return styled_response
+
+
 PqRQWBFCMeRUvqdLkcoBsgLdjXDNoVlZXQ
 
 def generate_savings_recommendations(financial_data):
