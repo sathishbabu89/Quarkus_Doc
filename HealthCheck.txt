@@ -1,0 +1,235 @@
+with tab9:
+    st.header("❤️ Financial Health Check")
+    
+    if total_summary:
+        # Calculate key ratios
+        savings_rate = (total_summary['savings'] / total_summary['totalIncome']) * 100
+        expense_ratio = (total_summary['totalExpenses'] / total_summary['totalIncome']) * 100
+        
+        # Health metrics with improved styling
+        st.markdown("### Your Financial Vital Signs")
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            metric_color = "green" if savings_rate > 20 else "orange"
+            st.markdown(f"""
+            <div style="background-color: rgba(0,0,0,0.05); padding: 15px; border-radius: 10px; text-align: center;">
+                <h4>Savings Rate</h4>
+                <h2 style="color: {metric_color};">{savings_rate:.1f}%</h2>
+                <p>{"Great work! 🌟" if savings_rate > 20 else "Let's improve this 💪"}</p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+        with col2:
+            metric_color = "green" if expense_ratio < 80 else "orange"
+            st.markdown(f"""
+            <div style="background-color: rgba(0,0,0,0.05); padding: 15px; border-radius: 10px; text-align: center;">
+                <h4>Expense Ratio</h4>
+                <h2 style="color: {metric_color};">{expense_ratio:.1f}%</h2>
+                <p>{"Healthy balance 👍" if expense_ratio < 80 else "Slightly high 👀"}</p>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        # Emergency fund check with improved UI
+        monthly_expenses = total_summary['totalExpenses']
+        
+        with col3:
+            emergency_fund = st.number_input("Emergency Fund Amount", 
+                                          value=3*monthly_expenses,
+                                          key="emergency_fund")
+            ef_months = emergency_fund/monthly_expenses
+            metric_color = "green" if ef_months >= 6 else "orange" if ef_months >= 3 else "red"
+            st.markdown(f"""
+            <div style="background-color: rgba(0,0,0,0.05); padding: 15px; border-radius: 10px; text-align: center;">
+                <h4>Emergency Fund</h4>
+                <h2 style="color: {metric_color};">{ef_months:.1f} months</h2>
+                <p>{"Excellent safety net! 🛡️" if ef_months >= 6 else "Building nicely 🏗️" if ef_months >= 3 else "Let's strengthen this 🧱"}</p>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        # Debt-to-income ratio with improved styling
+        if st.session_state.debts:
+            total_debt_payments = sum(d['payment'] for d in st.session_state.debts)
+            dti_ratio = (total_debt_payments / total_summary['totalIncome']) * 100
+            metric_color = "green" if dti_ratio < 35 else "orange" if dti_ratio < 45 else "red"
+            
+            st.markdown(f"""
+            <div style="background-color: rgba(0,0,0,0.05); padding: 15px; border-radius: 10px; margin: 15px 0;">
+                <h4 style="text-align: center;">Debt-to-Income Ratio</h4>
+                <h2 style="color: {metric_color}; text-align: center;">{dti_ratio:.1f}%</h2>
+                <p style="text-align: center;">{"Manageable debt level 👏" if dti_ratio < 35 else "Let's work on reducing this 📉"}</p>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        # Financial health score with improved visualization
+        health_score = min(100, savings_rate*2 + (100-expense_ratio))
+        if st.session_state.debts:
+            health_score -= min(30, dti_ratio)
+        
+        st.markdown("### Your Financial Health Score")
+        
+        # Create a more attractive progress bar
+        score_color = "green" if health_score >= 80 else "orange" if health_score >= 60 else "red"
+        st.markdown(f"""
+        <div style="margin: 20px 0;">
+            <div style="background-color: #f0f0f0; border-radius: 10px; height: 30px; width: 100%;">
+                <div style="background-color: {score_color}; width: {int(health_score)}%; height: 100%; border-radius: 10px; 
+                      text-align: center; line-height: 30px; color: white; font-weight: bold;">
+                    {int(health_score)}/100
+                </div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Interactive action buttons
+        st.markdown("### Take Action Today")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            if st.button("📊 Get Personalized Savings Plan", key="savings_button", 
+                       use_container_width=True):
+                st.session_state.show_savings_plan = True
+            
+            if st.button("💸 Debt Reduction Strategy", key="debt_button", 
+                       use_container_width=True):
+                st.session_state.show_debt_strategy = True
+                
+        with col2:
+            if st.button("🔍 Find Expense Optimization", key="expense_button", 
+                       use_container_width=True):
+                st.session_state.show_expense_optimization = True
+            
+            if st.button("🎯 Set Financial Goals", key="goals_button", 
+                       use_container_width=True):
+                st.session_state.show_goal_setter = True
+        
+        # Display content based on button clicks
+        if st.session_state.get("show_savings_plan", False):
+            st.markdown("---")
+            st.subheader("Your Personalized Savings Plan")
+            
+            # Getting AI-generated recommendations
+            with st.spinner("Generating your personalized savings plan..."):
+                try:
+                    recommendations = generate_savings_recommendations(total_summary)
+                    st.markdown(recommendations)
+                    
+                    # Download option
+                    st.download_button(
+                        label="Download Savings Plan",
+                        data=recommendations,
+                        file_name="my_savings_plan.md",
+                        mime="text/markdown",
+                    )
+                except Exception as e:
+                    st.error(f"Couldn't generate recommendations: {e}")
+        
+        if st.session_state.get("show_debt_strategy", False):
+            st.markdown("---")
+            st.subheader("Debt Reduction Strategy")
+            
+            if st.session_state.debts:
+                # Sort debts by interest rate (for avalanche method)
+                sorted_debts = sorted(st.session_state.debts, key=lambda x: x['interest'], reverse=True)
+                
+                method = st.radio(
+                    "Choose your debt reduction strategy:",
+                    ["Avalanche Method (Highest interest first)", "Snowball Method (Smallest balance first)"]
+                )
+                
+                if "Snowball" in method:
+                    # Resort by balance for snowball
+                    sorted_debts = sorted(st.session_state.debts, key=lambda x: x['balance'])
+                
+                st.markdown("### Your Debt Payoff Order")
+                for i, debt in enumerate(sorted_debts):
+                    st.markdown(f"""
+                    <div style="background-color: rgba(0,0,0,0.05); padding: 15px; border-radius: 10px; margin: 10px 0;">
+                        <h4>Priority #{i+1}: {debt['name']}</h4>
+                        <p>Balance: €{debt['balance']:,.2f} | Interest Rate: {debt['interest']}%</p>
+                        <div style="height: 10px; background-color: #f0f0f0; border-radius: 5px;">
+                            <div style="width: {min(100, debt['payment']/debt['balance']*100*12)}%; background-color: #3498db; height: 100%; border-radius: 5px;"></div>
+                        </div>
+                        <p style="text-align: right; font-size: 0.8em;">Est. payoff: {max(1, int(debt['balance']/(debt['payment']*12)))} years at current rate</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+            else:
+                st.success("Great news! You don't have any debts recorded in the system.")
+        
+        if st.session_state.get("show_expense_optimization", False):
+            st.markdown("---")
+            st.subheader("Expense Optimization Opportunities")
+            
+            if 'spending_by_category' in total_summary:
+                # Find top spending categories
+                categories = total_summary['spending_by_category']
+                sorted_categories = sorted(categories.items(), key=lambda x: x[1], reverse=True)
+                
+                for category, amount in sorted_categories[:3]:
+                    potential_savings = amount * 0.1  # Assume 10% savings potential
+                    
+                    st.markdown(f"""
+                    <div style="background-color: rgba(0,0,0,0.05); padding: 15px; border-radius: 10px; margin: 10px 0;">
+                        <h4>{category}</h4>
+                        <p>Current spending: €{amount:,.2f}</p>
+                        <p>Potential monthly savings: <span style="color: green; font-weight: bold;">€{potential_savings:,.2f}</span></p>
+                        <div style="background-color: #f0f0f0; border-radius: 5px; height: 30px; width: 100%;">
+                            <div style="width: 10%; background-color: #2ecc71; height: 100%; border-radius: 5px; text-align: center; line-height: 30px; color: white;">
+                                10%
+                            </div>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                annual_impact = sum([amt * 0.1 for _, amt in sorted_categories[:3]]) * 12
+                st.markdown(f"""
+                <div style="text-align: center; margin: 20px 0;">
+                    <h3>Total Annual Impact</h3>
+                    <h2 style="color: green;">€{annual_impact:,.2f}</h2>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                if st.button("Get Detailed Savings Tips", key="tips_button"):
+                    st.session_state.show_detailed_tips = True
+            else:
+                st.warning("No spending by category data available.")
+        
+        if st.session_state.get("show_goal_setter", False):
+            st.markdown("---")
+            st.subheader("Set Your Financial Goals")
+            
+            goal_types = ["Emergency Fund", "Major Purchase", "Retirement", "Debt Freedom", "Custom Goal"]
+            goal_type = st.selectbox("Goal Type", goal_types)
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                goal_amount = st.number_input("Target Amount (€)", min_value=0.0, value=10000.0)
+            with col2:
+                goal_years = st.number_input("Target Years", min_value=0.1, max_value=50.0, value=5.0, step=0.5)
+            
+            monthly_contribution = goal_amount / (goal_years * 12)
+            
+            st.markdown(f"""
+            <div style="background-color: rgba(0,0,0,0.05); padding: 20px; border-radius: 10px; margin: 15px 0; text-align: center;">
+                <h3>To reach your goal</h3>
+                <h2 style="margin: 10px 0;">You need to save <span style="color: #3498db;">€{monthly_contribution:,.2f}</span> monthly</h2>
+                <p>That's {(monthly_contribution/total_summary['totalIncome']*100):.1f}% of your current income</p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            if st.button("Save This Goal", key="save_goal_button"):
+                if "financial_goals" not in st.session_state:
+                    st.session_state.financial_goals = []
+                
+                st.session_state.financial_goals.append({
+                    "type": goal_type,
+                    "amount": goal_amount,
+                    "years": goal_years,
+                    "monthly": monthly_contribution
+                })
+                
+                st.success("Goal saved successfully!")
+    
+    else:
+        st.warning("Please load financial data in the Overview tab first")
